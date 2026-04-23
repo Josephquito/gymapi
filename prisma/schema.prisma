@@ -1,0 +1,112 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "commonjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
+model User {
+  id              String           @id @default(uuid())
+  name            String?
+  username        String           @unique
+  email           String           @unique
+  password        String?
+  age             Int?
+  gender          String?
+  weight          Float?
+  role            Role             @default(USER)
+  provider        AuthProvider     @default(LOCAL)
+  googleId        String?          @unique
+  isVerified      Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  customExercises CustomExercise[]
+  refreshTokens   RefreshToken[]
+  otpCodes        OtpCode[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  code      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model BodyPart {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  isActive        Boolean          @default(true)
+  exercises       Exercise[]
+  customExercises CustomExercise[]
+}
+
+model Equipment {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  isActive        Boolean          @default(true)
+  exercises       Exercise[]
+  customExercises CustomExercise[]
+}
+
+model Muscle {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  isActive        Boolean          @default(true)
+  exercises       Exercise[]
+  customExercises CustomExercise[]
+}
+
+model Exercise {
+  id           String      @id @default(uuid())
+  exerciseId   String?     @unique
+  name         String
+  nameEn       String?
+  gifUrl       String?
+  instructions String[]
+  isSystem     Boolean     @default(true)
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  bodyParts    BodyPart[]
+  equipments   Equipment[]
+  muscles      Muscle[]
+}
+
+model CustomExercise {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  notes      String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  bodyParts  BodyPart[]
+  equipments Equipment[]
+  muscles    Muscle[]
+}
