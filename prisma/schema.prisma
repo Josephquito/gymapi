@@ -60,6 +60,7 @@ model OtpCode {
 model BodyPart {
   id              String           @id @default(uuid())
   name            String           @unique
+  aliases         String[]
   isActive        Boolean          @default(true)
   exercises       Exercise[]
   customExercises CustomExercise[]
@@ -68,6 +69,7 @@ model BodyPart {
 model Equipment {
   id              String           @id @default(uuid())
   name            String           @unique
+  aliases         String[]
   isActive        Boolean          @default(true)
   exercises       Exercise[]
   customExercises CustomExercise[]
@@ -76,6 +78,7 @@ model Equipment {
 model Muscle {
   id              String           @id @default(uuid())
   name            String           @unique
+  aliases         String[]
   isActive        Boolean          @default(true)
   exercises       Exercise[]
   customExercises CustomExercise[]

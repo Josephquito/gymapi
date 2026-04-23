@@ -24,13 +24,25 @@ export class ExercisesService {
     });
   }
 
-  async getCustomExercises(userId: string, search?: string) {
+  async getCustomExercises(
+    userId: string,
+    search?: string,
+    bodyPartId?: string,
+    muscleId?: string,
+    equipmentId?: string,
+  ) {
     return this.prisma.customExercise.findMany({
       where: {
         userId,
-        ...(search && {
-          name: { contains: search, mode: 'insensitive' },
-        }),
+        ...(search && { name: { contains: search, mode: 'insensitive' } }),
+        ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
+        ...(muscleId && { muscles: { some: { id: muscleId } } }),
+        ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
+      },
+      include: {
+        bodyParts: true,
+        equipments: true,
+        muscles: true,
       },
       orderBy: { name: 'asc' },
     });
@@ -120,5 +132,44 @@ export class ExercisesService {
 
     await this.prisma.customExercise.delete({ where: { id } });
     return { message: 'Ejercicio eliminado' };
+  }
+
+  async getAllExercises(
+    userId: string,
+    search?: string,
+    bodyPartId?: string,
+    muscleId?: string,
+    equipmentId?: string,
+  ) {
+    const [system, custom] = await Promise.all([
+      this.prisma.exercise.findMany({
+        where: {
+          isActive: true,
+          isSystem: true,
+          ...(search && { name: { contains: search, mode: 'insensitive' } }),
+          ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
+          ...(muscleId && { muscles: { some: { id: muscleId } } }),
+          ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
+        },
+        include: { bodyParts: true, equipments: true, muscles: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.customExercise.findMany({
+        where: {
+          userId,
+          ...(search && { name: { contains: search, mode: 'insensitive' } }),
+          ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
+          ...(muscleId && { muscles: { some: { id: muscleId } } }),
+          ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
+        },
+        include: { bodyParts: true, equipments: true, muscles: true },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
+
+    return [
+      ...system.map((e) => ({ ...e, isCustom: false })),
+      ...custom.map((e) => ({ ...e, isCustom: true })),
+    ].sort((a, b) => a.name.localeCompare(b.name));
   }
 }

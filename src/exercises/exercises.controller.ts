@@ -26,8 +26,20 @@ export class ExercisesController {
   }
 
   @Get('custom')
-  getCustomExercises(@Req() req: any, @Query('search') search?: string) {
-    return this.exercises.getCustomExercises(req.user.id, search);
+  getCustomExercises(
+    @Req() req: any,
+    @Query('search') search?: string,
+    @Query('bodyPartId') bodyPartId?: string,
+    @Query('muscleId') muscleId?: string,
+    @Query('equipmentId') equipmentId?: string,
+  ) {
+    return this.exercises.getCustomExercises(
+      req.user.id,
+      search,
+      bodyPartId,
+      muscleId,
+      equipmentId,
+    );
   }
 
   @Post('custom')
@@ -47,5 +59,22 @@ export class ExercisesController {
   @Delete('custom/:id')
   deleteCustomExercise(@Req() req: any, @Param('id') id: string) {
     return this.exercises.deleteCustomExercise(req.user.id, id);
+  }
+
+  @Get()
+  getAllExercises(
+    @Req() req: any,
+    @Query('search') search?: string,
+    @Query('bodyPartId') bodyPartId?: string,
+    @Query('muscleId') muscleId?: string,
+    @Query('equipmentId') equipmentId?: string,
+  ) {
+    return this.exercises.getAllExercises(
+      req.user.id,
+      search,
+      bodyPartId,
+      muscleId,
+      equipmentId,
+    );
   }
 }
