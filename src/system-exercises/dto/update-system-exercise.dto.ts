@@ -1,4 +1,10 @@
-import { IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateSystemExerciseDto {
   @IsOptional()
@@ -9,6 +15,11 @@ export class UpdateSystemExerciseDto {
   @IsOptional()
   @IsString()
   nameEn?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  aliases?: string[];
 
   @IsOptional()
   @IsString()

@@ -89,6 +89,7 @@ model Exercise {
   exerciseId   String?     @unique
   name         String
   nameEn       String?
+  aliases      String[]                    // ← agregar esto
   gifUrl       String?
   instructions String[]
   isSystem     Boolean     @default(true)

@@ -13,6 +13,17 @@ const INCLUDE = { bodyParts: true, equipments: true, muscles: true } as const;
 export class SystemExercisesService {
   constructor(private prisma: PrismaService) {}
 
+  // ── Helper de búsqueda ────────────────────────────────────────
+  private buildSearchWhere(search: string) {
+    return {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { nameEn: { contains: search, mode: 'insensitive' as const } },
+        { aliases: { hasSome: [search] } },
+      ],
+    };
+  }
+
   findAll(
     search?: string,
     bodyPartId?: string,
@@ -23,7 +34,7 @@ export class SystemExercisesService {
       where: {
         isActive: true,
         isSystem: true,
-        ...(search && { name: { contains: search, mode: 'insensitive' } }),
+        ...(search && this.buildSearchWhere(search)),
         ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
         ...(muscleId && { muscles: { some: { id: muscleId } } }),
         ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
@@ -64,6 +75,7 @@ export class SystemExercisesService {
       data: {
         name: dto.name,
         nameEn: dto.nameEn,
+        aliases: dto.aliases ?? [],
         gifUrl: dto.gifUrl,
         isSystem: true,
         bodyParts: { connect: (dto.bodyPartIds ?? []).map((id) => ({ id })) },
@@ -95,6 +107,7 @@ export class SystemExercisesService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.nameEn !== undefined && { nameEn: dto.nameEn }),
+        ...(dto.aliases !== undefined && { aliases: dto.aliases }),
         ...(dto.gifUrl !== undefined && { gifUrl: dto.gifUrl }),
         ...(dto.bodyPartIds && {
           bodyParts: { set: dto.bodyPartIds.map((bpId) => ({ id: bpId })) },

@@ -12,13 +12,22 @@ import { UpdateCustomExerciseDto } from './dto/update-custom-exercise.dto';
 export class ExercisesService {
   constructor(private prisma: PrismaService) {}
 
+  // ── Helper de búsqueda ────────────────────────────────────────
+  private buildSearchWhere(search: string) {
+    return {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { nameEn: { contains: search, mode: 'insensitive' as const } },
+        { aliases: { hasSome: [search] } },
+      ],
+    };
+  }
+
   async getSystemExercises(search?: string) {
     return this.prisma.exercise.findMany({
       where: {
         isActive: true,
-        ...(search && {
-          name: { contains: search, mode: 'insensitive' },
-        }),
+        ...(search && this.buildSearchWhere(search)),
       },
       orderBy: { name: 'asc' },
     });
@@ -146,7 +155,7 @@ export class ExercisesService {
         where: {
           isActive: true,
           isSystem: true,
-          ...(search && { name: { contains: search, mode: 'insensitive' } }),
+          ...(search && this.buildSearchWhere(search)),
           ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
           ...(muscleId && { muscles: { some: { id: muscleId } } }),
           ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
