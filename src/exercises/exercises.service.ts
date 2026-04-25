@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomExerciseDto } from './dto/create-custom-exercise.dto';
 import { UpdateCustomExerciseDto } from './dto/update-custom-exercise.dto';
@@ -12,7 +13,30 @@ import { UpdateCustomExerciseDto } from './dto/update-custom-exercise.dto';
 export class ExercisesService {
   constructor(private prisma: PrismaService) {}
 
-  // ── Helper de búsqueda ────────────────────────────────────────
+  // ── Búsqueda con unaccent (solo para ejercicios sistema) ──────
+  private async searchExerciseIds(search: string): Promise<string[]> {
+    const term = search.trim();
+    if (!term) return [];
+
+    const results = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT e.id
+      FROM "Exercise" e
+      WHERE e."isActive" = true
+        AND e."isSystem" = true
+        AND (
+          immutable_unaccent(lower(e.name)) LIKE immutable_unaccent(lower(${`%${term}%`}))
+          OR immutable_unaccent(lower(COALESCE(e."nameEn", ''))) LIKE immutable_unaccent(lower(${`%${term}%`}))
+          OR EXISTS (
+            SELECT 1 FROM unnest(e.aliases) AS alias
+            WHERE immutable_unaccent(lower(alias)) LIKE immutable_unaccent(lower(${`%${term}%`}))
+          )
+        )
+    `;
+
+    return results.map((r) => r.id);
+  }
+
+  // ── Helper búsqueda simple (para custom exercises) ────────────
   private buildSearchWhere(search: string) {
     return {
       OR: [
@@ -150,23 +174,37 @@ export class ExercisesService {
     muscleId?: string,
     equipmentId?: string,
   ) {
+    const s = search?.trim() ?? '';
+
+    // Filtro base para sistema
+    let systemWhere: Prisma.ExerciseWhereInput = {
+      isActive: true,
+      isSystem: true,
+      ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
+      ...(muscleId && { muscles: { some: { id: muscleId } } }),
+      ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
+    };
+
+    // Si hay búsqueda, usar unaccent para obtener IDs
+    if (s) {
+      const matchingIds = await this.searchExerciseIds(s);
+      systemWhere = {
+        ...systemWhere,
+        id: { in: matchingIds }, // si matchingIds es [] no devuelve nada, correcto
+      };
+    }
+
     const [system, custom] = await Promise.all([
       this.prisma.exercise.findMany({
-        where: {
-          isActive: true,
-          isSystem: true,
-          ...(search && this.buildSearchWhere(search)),
-          ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
-          ...(muscleId && { muscles: { some: { id: muscleId } } }),
-          ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
-        },
+        where: systemWhere,
         include: { bodyParts: true, equipments: true, muscles: true },
         orderBy: { name: 'asc' },
       }),
       this.prisma.customExercise.findMany({
         where: {
           userId,
-          ...(search && { name: { contains: search, mode: 'insensitive' } }),
+          isActive: true,
+          ...(s && { name: { contains: s, mode: 'insensitive' } }),
           ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
           ...(muscleId && { muscles: { some: { id: muscleId } } }),
           ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
@@ -179,6 +217,6 @@ export class ExercisesService {
     return [
       ...system.map((e) => ({ ...e, isCustom: false })),
       ...custom.map((e) => ({ ...e, isCustom: true })),
-    ].sort((a, b) => a.name.localeCompare(b.name));
+    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
   }
 }
