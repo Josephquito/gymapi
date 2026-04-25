@@ -66,6 +66,16 @@ export class StatsService {
       .flatMap((e) => e.sets)
       .filter((s) => s.completed);
 
+    if (allSets.length === 0) {
+      return {
+        maxWeight: null,
+        bestSet: null,
+        lastSet: null,
+        sessions: [],
+        progress: [],
+      };
+    }
+
     const hasWeight = allSets.some((s) => s.weight !== null && s.weight > 0);
 
     // ── Peso máximo ───────────────────────────────────────────
