@@ -8,6 +8,7 @@ import { CatalogsModule } from './catalogs/catalogs.module';
 import { SystemExercisesModule } from './system-exercises/system-exercises.module';
 import { RoutinesModule } from './routines/routines.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { StatsModule } from './stats/stats.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SessionsModule } from './sessions/sessions.module';
     SystemExercisesModule,
     RoutinesModule,
     SessionsModule,
+    StatsModule,
   ],
 })
 export class AppModule {}
