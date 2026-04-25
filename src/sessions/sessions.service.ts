@@ -182,6 +182,15 @@ export class SessionsService {
   }
 
   async create(userId: string, dto: CreateSessionDto) {
+    // ── Validar sesión activa ────────────────────────────────────
+    const activeSession = await this.prisma.workoutSession.findFirst({
+      where: { userId, isFinished: false },
+    });
+    if (activeSession)
+      throw new BadRequestException(
+        'Ya tienes una sesión activa. Termínala antes de iniciar otra.',
+      );
+
     // sesión vacía sin rutina
     if (!dto.routineId) {
       return this.prisma.workoutSession.create({
@@ -408,5 +417,12 @@ export class SessionsService {
 
     await this.prisma.sessionSet.delete({ where: { id: setId } });
     return { message: 'Set eliminado' };
+  }
+
+  async getActive(userId: string) {
+    return this.prisma.workoutSession.findFirst({
+      where: { userId, isFinished: false },
+      include: INCLUDE,
+    });
   }
 }

@@ -37,13 +37,17 @@ model User {
   googleId        String?          @unique
   isVerified      Boolean          @default(false)
   bestSetMode     BestSetMode      @default(PREVIOUS)
+  
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  trainingSchedules TrainingSchedule[]
+
   customExercises CustomExercise[]
   refreshTokens   RefreshToken[]
   otpCodes        OtpCode[]
   routines        Routine[]
   sessions        WorkoutSession[]
+  restDays        RestDay[]        // ← nuevo
 }
 
 model RefreshToken {
@@ -201,4 +205,26 @@ model SessionSet {
   weight            Float?
   volume            Float?
   completed         Boolean         @default(false)
+}
+
+model RestDay {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String   // "2026-04-25" formato YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model TrainingSchedule {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainingDays Int[]
+  validFrom    String   // "2026-04-25" formato YYYY-MM-DD
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
 }

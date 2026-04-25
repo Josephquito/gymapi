@@ -29,6 +29,11 @@ export class SessionsController {
     return this.sessions.findAll(req.user.id);
   }
 
+  @Get('active')
+  getActive(@Req() req: any) {
+    return this.sessions.getActive(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Req() req: any, @Param('id') id: string) {
     return this.sessions.findOne(id, req.user.id);

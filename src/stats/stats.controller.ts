@@ -19,4 +19,12 @@ export class StatsController {
       isCustom === 'true',
     );
   }
+
+  @Get('history')
+  getWorkoutHistory(@Req() req: any, @Query('months') months?: string) {
+    return this.stats.getWorkoutHistory(
+      req.user.id,
+      months ? parseInt(months) : 3,
+    );
+  }
 }

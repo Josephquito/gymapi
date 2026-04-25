@@ -124,6 +124,18 @@ export class RoutinesService {
         'Solo puedes enviar uno: exerciseId o customExerciseId',
       );
 
+    // ── Validar duplicado ────────────────────────────────────────
+    const duplicate = await this.prisma.routineExercise.findFirst({
+      where: {
+        routineId,
+        ...(dto.exerciseId
+          ? { exerciseId: dto.exerciseId }
+          : { customExerciseId: dto.customExerciseId }),
+      },
+    });
+    if (duplicate)
+      throw new BadRequestException('Este ejercicio ya está en la rutina');
+
     // orden al final
     const last = await this.prisma.routineExercise.findFirst({
       where: { routineId },
@@ -145,7 +157,6 @@ export class RoutinesService {
       },
     });
 
-    // crea el primer set vacío automáticamente
     await this.prisma.routineSet.create({
       data: { routineExerciseId: re.id, order: 1 },
     });

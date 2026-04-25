@@ -68,6 +68,8 @@ export class ExercisesController {
     @Query('bodyPartId') bodyPartId?: string,
     @Query('muscleId') muscleId?: string,
     @Query('equipmentId') equipmentId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     return this.exercises.getAllExercises(
       req.user.id,
@@ -75,6 +77,8 @@ export class ExercisesController {
       bodyPartId,
       muscleId,
       equipmentId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 30,
     );
   }
 }

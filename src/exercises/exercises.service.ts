@@ -173,10 +173,12 @@ export class ExercisesService {
     bodyPartId?: string,
     muscleId?: string,
     equipmentId?: string,
+    page: number = 1,
+    limit: number = 30,
   ) {
     const s = search?.trim() ?? '';
+    const offset = (page - 1) * limit;
 
-    // Filtro base para sistema
     let systemWhere: Prisma.ExerciseWhereInput = {
       isActive: true,
       isSystem: true,
@@ -185,20 +187,29 @@ export class ExercisesService {
       ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
     };
 
-    // Si hay búsqueda, usar unaccent para obtener IDs
     if (s) {
       const matchingIds = await this.searchExerciseIds(s);
-      systemWhere = {
-        ...systemWhere,
-        id: { in: matchingIds }, // si matchingIds es [] no devuelve nada, correcto
-      };
+      systemWhere = { ...systemWhere, id: { in: matchingIds } };
     }
 
-    const [system, custom] = await Promise.all([
+    const [systemTotal, customTotal, system, custom] = await Promise.all([
+      this.prisma.exercise.count({ where: systemWhere }),
+      this.prisma.customExercise.count({
+        where: {
+          userId,
+          isActive: true,
+          ...(s && { name: { contains: s, mode: 'insensitive' } }),
+          ...(bodyPartId && { bodyParts: { some: { id: bodyPartId } } }),
+          ...(muscleId && { muscles: { some: { id: muscleId } } }),
+          ...(equipmentId && { equipments: { some: { id: equipmentId } } }),
+        },
+      }),
       this.prisma.exercise.findMany({
         where: systemWhere,
         include: { bodyParts: true, equipments: true, muscles: true },
         orderBy: { name: 'asc' },
+        skip: offset,
+        take: limit,
       }),
       this.prisma.customExercise.findMany({
         where: {
@@ -214,9 +225,54 @@ export class ExercisesService {
       }),
     ]);
 
-    return [
-      ...system.map((e) => ({ ...e, isCustom: false })),
-      ...custom.map((e) => ({ ...e, isCustom: true })),
-    ].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+    const systemIds = system.map((e) => e.id);
+    const customIds = custom.map((e) => e.id);
+
+    const [systemHistory, customHistory] = await Promise.all([
+      this.prisma.sessionExercise.findMany({
+        where: {
+          exerciseId: { in: systemIds },
+          session: { userId, isFinished: true },
+        },
+        select: { exerciseId: true },
+        distinct: ['exerciseId'],
+      }),
+      this.prisma.sessionExercise.findMany({
+        where: {
+          customExerciseId: { in: customIds },
+          session: { userId, isFinished: true },
+        },
+        select: { customExerciseId: true },
+        distinct: ['customExerciseId'],
+      }),
+    ]);
+
+    const systemWithHistory = new Set(systemHistory.map((h) => h.exerciseId));
+    const customWithHistory = new Set(
+      customHistory.map((h) => h.customExerciseId),
+    );
+    const total = systemTotal + customTotal;
+
+    return {
+      data: [
+        ...system.map((e) => ({
+          ...e,
+          isCustom: false,
+          hasHistory: systemWithHistory.has(e.id),
+        })),
+        ...custom.map((e) => ({
+          ...e,
+          isCustom: true,
+          hasHistory: customWithHistory.has(e.id),
+        })),
+      ].sort((a, b) => a.name.localeCompare(b.name, 'es')),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+      },
+    };
   }
 }
