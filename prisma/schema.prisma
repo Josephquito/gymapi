@@ -18,6 +18,11 @@ enum AuthProvider {
   GOOGLE
 }
 
+enum BestSetMode {
+  PREVIOUS
+  BEST_HISTORICAL
+}
+
 model User {
   id              String           @id @default(uuid())
   name            String?
@@ -31,11 +36,14 @@ model User {
   provider        AuthProvider     @default(LOCAL)
   googleId        String?          @unique
   isVerified      Boolean          @default(false)
+  bestSetMode     BestSetMode      @default(PREVIOUS)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   customExercises CustomExercise[]
   refreshTokens   RefreshToken[]
   otpCodes        OtpCode[]
+  routines        Routine[]
+  sessions        WorkoutSession[]
 }
 
 model RefreshToken {
@@ -85,32 +93,111 @@ model Muscle {
 }
 
 model Exercise {
-  id           String      @id @default(uuid())
-  exerciseId   String?     @unique
-  name         String
-  nameEn       String?
-  aliases      String[]                    // ← agregar esto
-  gifUrl       String?
-  instructions String[]
-  isSystem     Boolean     @default(true)
-  isActive     Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  bodyParts    BodyPart[]
-  equipments   Equipment[]
-  muscles      Muscle[]
+  id               String            @id @default(uuid())
+  exerciseId       String?           @unique
+  name             String
+  nameEn           String?
+  aliases          String[]
+  gifUrl           String?
+  instructions     String[]
+  isSystem         Boolean           @default(true)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  bodyParts        BodyPart[]
+  equipments       Equipment[]
+  muscles          Muscle[]
+  routineExercises RoutineExercise[]
+  sessionExercises SessionExercise[]
 }
 
 model CustomExercise {
-  id         String      @id @default(uuid())
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  notes            String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  bodyParts        BodyPart[]
+  equipments       Equipment[]
+  muscles          Muscle[]
+  routineExercises RoutineExercise[]
+  sessionExercises SessionExercise[]
+}
+
+model Routine {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  exercises   RoutineExercise[]
+  sessions    WorkoutSession[]
+}
+
+model RoutineExercise {
+  id               String          @id @default(uuid())
+  routineId        String
+  routine          Routine         @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exerciseId       String?
+  exercise         Exercise?       @relation(fields: [exerciseId], references: [id])
+  customExerciseId String?
+  customExercise   CustomExercise? @relation(fields: [customExerciseId], references: [id])
+  order            Int
+  sets             RoutineSet[]
+
+  @@index([routineId])
+}
+
+model RoutineSet {
+  id                String          @id @default(uuid())
+  routineExerciseId String
+  routineExercise   RoutineExercise @relation(fields: [routineExerciseId], references: [id], onDelete: Cascade)
+  order             Int
+  reps              Int?
+  weight            Float?
+}
+
+model WorkoutSession {
+  id         String            @id @default(uuid())
   userId     String
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  notes      String?
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  bodyParts  BodyPart[]
-  equipments Equipment[]
-  muscles    Muscle[]
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  routineId  String?
+  routine    Routine?          @relation(fields: [routineId], references: [id], onDelete: SetNull)
+  startedAt  DateTime          @default(now())
+  finishedAt DateTime?
+  isFinished Boolean           @default(false)
+  exercises  SessionExercise[]
+
+  @@index([userId])
+  @@index([routineId])
+}
+
+model SessionExercise {
+  id               String          @id @default(uuid())
+  sessionId        String
+  session          WorkoutSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId       String?
+  exercise         Exercise?       @relation(fields: [exerciseId], references: [id])
+  customExerciseId String?
+  customExercise   CustomExercise? @relation(fields: [customExerciseId], references: [id])
+  order            Int
+  sets             SessionSet[]
+
+  @@index([sessionId])
+}
+
+model SessionSet {
+  id                String          @id @default(uuid())
+  sessionExerciseId String
+  sessionExercise   SessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+  order             Int
+  reps              Int?
+  weight            Float?
+  volume            Float?
+  completed         Boolean         @default(false)
 }

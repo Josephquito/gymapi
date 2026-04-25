@@ -6,6 +6,8 @@ import { MailModule } from './mail/mail.module';
 import { ExercisesModule } from './exercises/exercises.module';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { SystemExercisesModule } from './system-exercises/system-exercises.module';
+import { RoutinesModule } from './routines/routines.module';
+import { SessionsModule } from './sessions/sessions.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { SystemExercisesModule } from './system-exercises/system-exercises.modul
     ExercisesModule,
     CatalogsModule,
     SystemExercisesModule,
+    RoutinesModule,
+    SessionsModule,
   ],
 })
 export class AppModule {}

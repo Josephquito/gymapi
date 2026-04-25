@@ -164,4 +164,12 @@ export class AuthService {
 
     return this.generateTokens(user.id, user.email);
   }
+
+  async updateConfig(userId: string, dto: UpdateConfigDto) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { bestSetMode: dto.bestSetMode },
+      select: { id: true, bestSetMode: true },
+    });
+  }
 }
