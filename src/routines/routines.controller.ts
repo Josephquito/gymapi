@@ -30,6 +30,11 @@ export class RoutinesController {
     return this.routines.findAll(req.user.id);
   }
 
+  @Get('today')
+  getToday(@Req() req: any) {
+    return this.routines.getTodayRoutines(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Req() req: any, @Param('id') id: string) {
     return this.routines.findOne(id, req.user.id);
@@ -119,10 +124,5 @@ export class RoutinesController {
     @Param('setId') setId: string,
   ) {
     return this.routines.removeSet(id, routineExerciseId, setId, req.user.id);
-  }
-
-  @Get('today')
-  getToday(@Req() req: any) {
-    return this.routines.getTodayRoutines(req.user.id);
   }
 }
