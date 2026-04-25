@@ -133,6 +133,7 @@ model Routine {
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
+  days        Int[]             // 1=Lunes, 2=Martes, 3=Miércoles, 4=Jueves, 5=Viernes, 6=Sábado, 7=Domingo
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   exercises   RoutineExercise[]

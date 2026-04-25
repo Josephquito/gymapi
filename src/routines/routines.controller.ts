@@ -120,4 +120,9 @@ export class RoutinesController {
   ) {
     return this.routines.removeSet(id, routineExerciseId, setId, req.user.id);
   }
+
+  @Get('today')
+  getToday(@Req() req: any) {
+    return this.routines.getTodayRoutines(req.user.id);
+  }
 }

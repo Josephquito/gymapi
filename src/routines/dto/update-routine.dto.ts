@@ -1,4 +1,12 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateRoutineDto {
   @IsOptional()
@@ -9,4 +17,11 @@ export class UpdateRoutineDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true })
+  @Min(1, { each: true })
+  @Max(7, { each: true })
+  days?: number[];
 }

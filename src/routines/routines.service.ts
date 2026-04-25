@@ -77,7 +77,12 @@ export class RoutinesService {
 
   async create(userId: string, dto: CreateRoutineDto) {
     return this.prisma.routine.create({
-      data: { userId, name: dto.name, description: dto.description },
+      data: {
+        userId,
+        name: dto.name,
+        description: dto.description,
+        days: dto.days ?? [],
+      },
       include: INCLUDE,
     });
   }
@@ -89,6 +94,7 @@ export class RoutinesService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.days !== undefined && { days: dto.days }),
       },
       include: INCLUDE,
     });
@@ -241,5 +247,20 @@ export class RoutinesService {
 
     await this.prisma.routineSet.delete({ where: { id: setId } });
     return { message: 'Set eliminado' };
+  }
+
+  getTodayRoutines(userId: string) {
+    const today = new Date().getDay(); // 0=domingo, 1=lunes...
+    // convertimos a nuestro formato 1-7
+    const day = today === 0 ? 7 : today;
+
+    return this.prisma.routine.findMany({
+      where: {
+        userId,
+        days: { has: day },
+      },
+      include: INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }
