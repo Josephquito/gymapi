@@ -248,6 +248,12 @@ export class SessionsService {
     });
   }
 
+  async delete(id: string, userId: string) {
+    await this.findSessionOrThrow(id, userId);
+    await this.prisma.workoutSession.delete({ where: { id } });
+    return { message: 'Sesión eliminada' };
+  }
+
   // ── Ejercicios de la sesión ───────────────────────────────────
 
   async addExercise(

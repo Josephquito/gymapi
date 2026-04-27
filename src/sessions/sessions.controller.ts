@@ -49,6 +49,11 @@ export class SessionsController {
     return this.sessions.finish(id, req.user.id);
   }
 
+  @Delete(':id')
+  delete(@Req() req: any, @Param('id') id: string) {
+    return this.sessions.delete(id, req.user.id);
+  }
+
   // ── Ejercicios ────────────────────────────────────────────────
 
   @Post(':id/exercises')
