@@ -152,10 +152,20 @@ export class StatsService {
     };
   }
 
-  async getWorkoutHistory(userId: string, months: number = 3) {
+  async getWorkoutHistory(
+    userId: string,
+    mode: 'week' | 'month' | 'year' = 'month',
+  ) {
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - months);
+
+    if (mode === 'week') {
+      startDate.setDate(startDate.getDate() - 6);
+    } else if (mode === 'month') {
+      startDate.setMonth(startDate.getMonth() - 3);
+    } else {
+      startDate.setFullYear(startDate.getFullYear() - 1);
+    }
     startDate.setHours(0, 0, 0, 0);
 
     const startStr = startDate.toISOString().split('T')[0];
@@ -192,7 +202,7 @@ export class StatsService {
     // ── Helper: obtener trainingDays vigentes para una fecha ─────
     const getTrainingDaysForDate = (dateStr: string): number[] => {
       const applicable = schedules.filter((s) => s.validFrom <= dateStr);
-      if (applicable.length === 0) return [1, 2, 3, 4, 5, 6, 7]; // default
+      if (applicable.length === 0) return [1, 2, 3, 4, 5, 6, 7];
       return applicable[applicable.length - 1].trainingDays;
     };
 
@@ -293,7 +303,6 @@ export class StatsService {
       prev.setDate(prev.getDate() - 1);
       let prevStr = prev.toISOString().split('T')[0];
 
-      // saltar días de descanso hacia atrás
       while (
         allRestSet.has(prevStr) ||
         !getTrainingDaysForDate(prevStr).includes(
@@ -313,7 +322,6 @@ export class StatsService {
       if (tempStreak > maxStreak) maxStreak = tempStreak;
     }
 
-    // trainingDays vigentes hoy para el front
     const currentTrainingDays = getTrainingDaysForDate(todayStr);
 
     return {
@@ -322,6 +330,7 @@ export class StatsService {
       maxStreak,
       totalSessions: allSessions.length,
       trainingDays: currentTrainingDays,
+      mode,
     };
   }
 }

@@ -21,10 +21,11 @@ export class StatsController {
   }
 
   @Get('history')
-  getWorkoutHistory(@Req() req: any, @Query('months') months?: string) {
-    return this.stats.getWorkoutHistory(
-      req.user.id,
-      months ? parseInt(months) : 3,
-    );
+  getWorkoutHistory(@Req() req: any, @Query('mode') mode?: string) {
+    const validMode = ['week', 'month', 'year'].includes(mode ?? '')
+      ? (mode as 'week' | 'month' | 'year')
+      : 'month';
+
+    return this.stats.getWorkoutHistory(req.user.id, validMode);
   }
 }
