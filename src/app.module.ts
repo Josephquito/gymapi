@@ -10,7 +10,6 @@ import { RoutinesModule } from './routines/routines.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { StatsModule } from './stats/stats.module';
 import { RestDaysModule } from './rest-days/rest-days.module';
-import { TrainingScheduleModule } from './training-schedule/training-schedule.module';
 
 @Module({
   imports: [
@@ -25,7 +24,6 @@ import { TrainingScheduleModule } from './training-schedule/training-schedule.mo
     SessionsModule,
     StatsModule,
     RestDaysModule,
-    TrainingScheduleModule,
   ],
 })
 export class AppModule {}

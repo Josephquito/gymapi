@@ -5,12 +5,16 @@ import { PrismaService } from '../prisma/prisma.service';
 export class StatsService {
   constructor(private prisma: PrismaService) {}
 
+  // ════════════════════════════════════════════════════════════
+  // STATS DE EJERCICIO
+  // ════════════════════════════════════════════════════════════
+
   async getExerciseStats(
     userId: string,
     exerciseId: string,
     isCustom: boolean,
   ) {
-    // verifica que el ejercicio existe
+    // ── Verificar que el ejercicio existe ─────────────────────
     if (isCustom) {
       const ex = await this.prisma.customExercise.findUnique({
         where: { id: exerciseId },
@@ -23,7 +27,7 @@ export class StatsService {
       if (!ex) throw new NotFoundException('Ejercicio no encontrado');
     }
 
-    // busca todas las sesiones finalizadas del usuario que contengan este ejercicio
+    // ── Buscar sesiones finalizadas con este ejercicio ────────
     const sessions = await this.prisma.workoutSession.findMany({
       where: {
         userId,
@@ -60,7 +64,7 @@ export class StatsService {
       };
     }
 
-    // aplana todos los sets completados
+    // ── Aplanar sets completados ──────────────────────────────
     const allSets = sessions
       .flatMap((s) => s.exercises)
       .flatMap((e) => e.sets)
@@ -92,7 +96,7 @@ export class StatsService {
           (curr.reps ?? 0) > (best.reps ?? 0) ? curr : best,
         );
 
-    // ── Último set (última sesión, mejor set de esa sesión) ───
+    // ── Último set (mejor set de la última sesión) ────────────
     const lastSession = sessions[sessions.length - 1];
     const lastSessionSets = lastSession.exercises
       .flatMap((e) => e.sets)
@@ -123,7 +127,7 @@ export class StatsService {
         })),
     }));
 
-    // ── Progreso (mejor set por sesión para la gráfica) ───────
+    // ── Progreso (mejor valor por sesión para la gráfica) ─────
     const progress = sessions
       .map((s) => {
         const sets = s.exercises
@@ -136,10 +140,7 @@ export class StatsService {
           ? Math.max(...sets.map((set) => set.volume ?? 0))
           : Math.max(...sets.map((set) => set.reps ?? 0));
 
-        return {
-          date: s.finishedAt,
-          value,
-        };
+        return { date: s.finishedAt, value };
       })
       .filter(Boolean);
 
@@ -152,10 +153,15 @@ export class StatsService {
     };
   }
 
+  // ════════════════════════════════════════════════════════════
+  // HISTORIAL DE ENTRENAMIENTOS Y RACHA
+  // ════════════════════════════════════════════════════════════
+
   async getWorkoutHistory(
     userId: string,
     mode: 'week' | 'month' | 'year' = 'month',
   ) {
+    // ── Fechas del usuario y rango del calendario ─────────────
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { createdAt: true },
@@ -170,21 +176,26 @@ export class StatsService {
     if (mode === 'week') {
       startDate.setDate(startDate.getDate() - 6);
     } else if (mode === 'month') {
-      // desde el inicio del año actual
-      startDate.setMonth(0, 1);
+      startDate.setMonth(0, 1); // inicio del año actual
     } else {
-      // desde el año de registro
-      startDate.setFullYear(registeredAt.getFullYear(), 0, 1);
+      startDate.setFullYear(registeredAt.getFullYear(), 0, 1); // inicio del año de registro
     }
     startDate.setHours(0, 0, 0, 0);
+
+    // para year incluir hasta fin del año actual
+    if (mode === 'year') {
+      endDate.setMonth(11, 31);
+    }
 
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
 
-    const [schedules, sessions, restDays] = await Promise.all([
-      this.prisma.trainingSchedule.findMany({
+    // ── Obtener datos en paralelo ─────────────────────────────
+    const [routines, sessions, restDays] = await Promise.all([
+      // días de entreno inferidos desde las rutinas del usuario
+      this.prisma.routine.findMany({
         where: { userId },
-        orderBy: { validFrom: 'asc' },
+        select: { days: true },
       }),
       this.prisma.workoutSession.findMany({
         where: {
@@ -203,17 +214,15 @@ export class StatsService {
       }),
     ]);
 
+    // ── Días de entreno = union de todos los days[] de rutinas ─
+    const trainingDays = [...new Set(routines.flatMap((r) => r.days))];
+
     const trainedSet = new Set(
       sessions.map((s) => s.finishedAt!.toISOString().split('T')[0]),
     );
     const restSet = new Set(restDays.map((r) => r.date));
 
-    const getTrainingDaysForDate = (dateStr: string): number[] => {
-      const applicable = schedules.filter((s) => s.validFrom <= dateStr);
-      if (applicable.length === 0) return [1, 2, 3, 4, 5, 6, 7];
-      return applicable[applicable.length - 1].trainingDays;
-    };
-
+    // ── Construir calendario ──────────────────────────────────
     const calendar: Record<
       string,
       'trained' | 'rest' | 'incomplete' | 'future' | 'empty'
@@ -226,13 +235,12 @@ export class StatsService {
     while (cursor <= endDate) {
       const dateStr = cursor.toISOString().split('T')[0];
       const dayOfWeek = cursor.getDay() === 0 ? 7 : cursor.getDay();
-      const trainingDays = getTrainingDaysForDate(dateStr);
       const isTrainingDay = trainingDays.includes(dayOfWeek);
       const isFuture = cursor > today;
       const isBeforeRegistration = dateStr < registeredStr;
 
       if (isFuture || isBeforeRegistration) {
-        calendar[dateStr] = 'empty'; // ← celda vacía
+        calendar[dateStr] = 'empty';
       } else if (trainedSet.has(dateStr)) {
         calendar[dateStr] = 'trained';
       } else if (restSet.has(dateStr) || !isTrainingDay) {
@@ -244,28 +252,28 @@ export class StatsService {
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    // ── Racha actual ─────────────────────────────────────────────
+    // ── Racha actual ──────────────────────────────────────────
     let currentStreak = 0;
     const todayStr = today.toISOString().split('T')[0];
     const todayDow = today.getDay() === 0 ? 7 : today.getDay();
-    const todayTrainingDays = getTrainingDaysForDate(todayStr);
-    const todayIsTraining = todayTrainingDays.includes(todayDow);
+    const todayIsTraining = trainingDays.includes(todayDow);
 
     if (
       todayIsTraining &&
       !trainedSet.has(todayStr) &&
       !restSet.has(todayStr)
     ) {
+      // hoy era día de entreno y no se entrenó → racha rota
       currentStreak = 0;
     } else {
       const checkDate = new Date(today);
       while (true) {
         const dateStr = checkDate.toISOString().split('T')[0];
         const dayOfWeek = checkDate.getDay() === 0 ? 7 : checkDate.getDay();
-        const trainingDays = getTrainingDaysForDate(dateStr);
         const isTrainingDay = trainingDays.includes(dayOfWeek);
 
         if (!isTrainingDay || restSet.has(dateStr)) {
+          // día de descanso → saltar sin romper racha
           checkDate.setDate(checkDate.getDate() - 1);
           continue;
         }
@@ -281,7 +289,7 @@ export class StatsService {
       }
     }
 
-    // ── Racha máxima histórica ───────────────────────────────────
+    // ── Racha máxima histórica ────────────────────────────────
     const [allSessions, allRestDays] = await Promise.all([
       this.prisma.workoutSession.findMany({
         where: { userId, isFinished: true },
@@ -311,11 +319,10 @@ export class StatsService {
       prev.setDate(prev.getDate() - 1);
       let prevStr = prev.toISOString().split('T')[0];
 
+      // saltar días de descanso hacia atrás
       while (
         allRestSet.has(prevStr) ||
-        !getTrainingDaysForDate(prevStr).includes(
-          prev.getDay() === 0 ? 7 : prev.getDay(),
-        )
+        !trainingDays.includes(prev.getDay() === 0 ? 7 : prev.getDay())
       ) {
         prev.setDate(prev.getDate() - 1);
         prevStr = prev.toISOString().split('T')[0];
@@ -330,15 +337,14 @@ export class StatsService {
       if (tempStreak > maxStreak) maxStreak = tempStreak;
     }
 
-    const currentTrainingDays = getTrainingDaysForDate(todayStr);
-
+    // ── Response ──────────────────────────────────────────────
     return {
       calendar,
       currentStreak,
       maxStreak,
       totalSessions: allSessions.length,
-      trainingDays: currentTrainingDays,
-      registeredAt: registeredStr, // ← nuevo
+      trainingDays,
+      registeredAt: registeredStr,
       mode,
     };
   }

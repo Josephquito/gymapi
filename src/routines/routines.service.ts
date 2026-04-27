@@ -76,6 +76,20 @@ export class RoutinesService {
   }
 
   async create(userId: string, dto: CreateRoutineDto) {
+    // ── Validar que ningún día ya está asignado a otra rutina ──
+    if (dto.days && dto.days.length > 0) {
+      const conflict = await this.prisma.routine.findFirst({
+        where: {
+          userId,
+          days: { hasSome: dto.days },
+        },
+      });
+      if (conflict)
+        throw new BadRequestException(
+          `El día ya está asignado a la rutina "${conflict.name}"`,
+        );
+    }
+
     return this.prisma.routine.create({
       data: {
         userId,
@@ -89,6 +103,22 @@ export class RoutinesService {
 
   async update(id: string, userId: string, dto: UpdateRoutineDto) {
     await this.findRoutineOrThrow(id, userId);
+
+    // ── Validar días únicos excluyendo la rutina actual ────────
+    if (dto.days && dto.days.length > 0) {
+      const conflict = await this.prisma.routine.findFirst({
+        where: {
+          userId,
+          id: { not: id }, // excluir la rutina que se está editando
+          days: { hasSome: dto.days },
+        },
+      });
+      if (conflict)
+        throw new BadRequestException(
+          `El día ya está asignado a la rutina "${conflict.name}"`,
+        );
+    }
+
     return this.prisma.routine.update({
       where: { id },
       data: {
