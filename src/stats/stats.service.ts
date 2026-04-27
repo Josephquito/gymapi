@@ -156,22 +156,31 @@ export class StatsService {
     userId: string,
     mode: 'week' | 'month' | 'year' = 'month',
   ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true },
+    });
+
+    const registeredAt = user!.createdAt;
+    const registeredStr = registeredAt.toISOString().split('T')[0];
+
     const endDate = new Date();
     const startDate = new Date();
 
     if (mode === 'week') {
       startDate.setDate(startDate.getDate() - 6);
     } else if (mode === 'month') {
-      startDate.setMonth(startDate.getMonth() - 3);
+      // desde el inicio del año actual
+      startDate.setMonth(0, 1);
     } else {
-      startDate.setFullYear(startDate.getFullYear() - 1);
+      // desde el año de registro
+      startDate.setFullYear(registeredAt.getFullYear(), 0, 1);
     }
     startDate.setHours(0, 0, 0, 0);
 
     const startStr = startDate.toISOString().split('T')[0];
     const endStr = endDate.toISOString().split('T')[0];
 
-    // ── Datos en paralelo ────────────────────────────────────────
     const [schedules, sessions, restDays] = await Promise.all([
       this.prisma.trainingSchedule.findMany({
         where: { userId },
@@ -199,17 +208,15 @@ export class StatsService {
     );
     const restSet = new Set(restDays.map((r) => r.date));
 
-    // ── Helper: obtener trainingDays vigentes para una fecha ─────
     const getTrainingDaysForDate = (dateStr: string): number[] => {
       const applicable = schedules.filter((s) => s.validFrom <= dateStr);
       if (applicable.length === 0) return [1, 2, 3, 4, 5, 6, 7];
       return applicable[applicable.length - 1].trainingDays;
     };
 
-    // ── Construir calendario ─────────────────────────────────────
     const calendar: Record<
       string,
-      'trained' | 'rest' | 'incomplete' | 'future'
+      'trained' | 'rest' | 'incomplete' | 'future' | 'empty'
     > = {};
 
     const cursor = new Date(startDate);
@@ -222,9 +229,10 @@ export class StatsService {
       const trainingDays = getTrainingDaysForDate(dateStr);
       const isTrainingDay = trainingDays.includes(dayOfWeek);
       const isFuture = cursor > today;
+      const isBeforeRegistration = dateStr < registeredStr;
 
-      if (isFuture) {
-        calendar[dateStr] = 'future';
+      if (isFuture || isBeforeRegistration) {
+        calendar[dateStr] = 'empty'; // ← celda vacía
       } else if (trainedSet.has(dateStr)) {
         calendar[dateStr] = 'trained';
       } else if (restSet.has(dateStr) || !isTrainingDay) {
@@ -330,6 +338,7 @@ export class StatsService {
       maxStreak,
       totalSessions: allSessions.length,
       trainingDays: currentTrainingDays,
+      registeredAt: registeredStr, // ← nuevo
       mode,
     };
   }
